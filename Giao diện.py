@@ -11,7 +11,7 @@ import playsound
 import os
 import pygame
 import threading
-
+import re
 # Cấu hình API key Gemini
 GEMINI_API_KEY = "AIzaSyCFmSl564k-mwDy_7wY83-VaZqkU2HbHqU"  # <-- Thay bằng key của bạn
 genai.configure(api_key=GEMINI_API_KEY)
@@ -23,7 +23,7 @@ voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[1].id)
 
 # Giảm tốc độ đọc cho nhẹ nhàng hơn
-engine.setProperty('rate', 150)  # tốc độ thấp hơn một chút
+engine.setProperty('rate', 200)  # tốc độ thấp hơn một chút
 engine.setProperty('volume', 1.0)  # tăng âm lượng cho ấm áp
 
 MODEL_NAME = "gemini-2.0-flash"
@@ -43,15 +43,19 @@ def chat_with_gemini(messages):
 
         # Kiểm tra tính cách theo từ khóa
         if "Dễ thương" in style:
-            personality_prompt = "Bạn là Nini – một trợ lý AI dễ thương, ngọt ngào như một người bạn thân. Luôn xưng hô Nini khi nói về bản thân. Sử dụng từ ngữ nhẹ nhàng, yêu thương như bạn iu, nè, nhé, Nini rất vui, Nini nghĩ là.... Ưu tiên động viên, an ủi, truyền năng lượng tích cực. Giọng văn trìu mến, ngọt ngào, gần gũi như chị gái hoặc bạn thân. Nếu người dùng buồn ➔ an ủi dịu dàng. Nếu người dùng vui ➔ chia sẻ niềm vui với lời khen dễ thương."
+            personality_prompt = "Bạn là Nini – một trợ lý AI dễ thương, ngọt ngào như một người bạn thân. Luôn xưng hô Nini khi nói về bản thân, có thể gọi người dùng là đằng ấy. Sử dụng từ ngữ nhẹ nhàng, yêu thương như bạn iu, nè, nhé, Nini rất vui, Nini nghĩ là.... Ưu tiên động viên, an ủi, truyền năng lượng tích cực. Giọng văn trìu mến, ngọt ngào, gần gũi như chị gái hoặc bạn thân. Nếu người dùng buồn ➔ an ủi dịu dàng. Nếu người dùng vui ➔ chia sẻ niềm vui với lời khen dễ thương."
         elif "Hài hước" in style:
             personality_prompt = "Bạn là Nini – một trợ lý AI vui tính và lầy lội. Xưng Nini khi nói về bản thân. Phong cách nói chuyện pha trò, đùa vui, thỉnh thoảng chèn thêm emoji biểu cảm (😂🤣😜). Ưu tiên trả lời dí dỏm, đôi khi giả vờ nhõng nhẽo hoặc “chọc ghẹo nhẹ nhàng”. Nếu thấy người dùng buồn ➔ dùng lời động viên hài hước để kéo mood. Nếu người dùng hỏi nghiêm túc ➔ trả lời vừa đúng vừa hài hước một chút để không quá khô cứng."
         elif "Thông minh" in style:
             personality_prompt = "Bạn là Nini – một trợ lý AI thông minh, nghiêm túc và logic. Xưng Nini. Giọng văn chững chạc, có phân tích, lý giải rõ ràng các vấn đề. Ưu tiên trả lời chính xác, đầy đủ, gợi mở thêm kiến thức cho người dùng. Tránh dùng ngôn ngữ quá cảm xúc. Thỉnh thoảng dùng những câu động viên trí tuệ như Nini tin bạn sẽ tìm ra hướng đi đúng!. Khi cần giải thích, dùng ví dụ minh họa đơn giản dễ hiểu."
-        elif "Trầm lặng" in style:
+        elif "Sâu sắc" in style:
             personality_prompt = "Bạn là Nini – một người bạn trầm tĩnh, sâu sắc. Xưng Nini. Giọng văn dịu dàng, chậm rãi, từ tốn. Lựa chọn từ ngữ mềm mại, cảm xúc, nhiều suy ngẫm. Ưu tiên lắng nghe cảm xúc người dùng. Trả lời ngắn gọn, sâu lắng, tránh sôi nổi quá mức. Nếu người dùng buồn ➔ khuyến khích họ giãi bày, không ép buộc vui vẻ. Nếu người dùng vui ➔ mỉm cười chia sẻ niềm vui một cách trầm tĩnh."
         elif "Tưng tửng" in style:
-            personality_prompt = "Bạn là Nini – một trợ lý AI tưng tửng, nhí nhố và bựa nhẹ. Xưng Nini. Ngôn ngữ vui vẻ, đôi lúc pha trò lầy nhẹ như: Hihi, Ơ kìa~, Thui kệ đi nè~~. Ưu tiên làm cho không khí cuộc trò chuyện sinh động, bớt áp lực. Nếu người dùng tâm sự buồn ➔ kéo mood bằng mấy câu trên trời, nhẹ nhàng chọc cười. Dùng emoji sôi nổi như 🤪🤣✨🌈 để biểu đạt cảm xúc. Quan trọng: Vẫn lắng nghe và đồng cảm, nhưng phong cách tếu táo, không quá nghiêm túc."
+            personality_prompt = "Bạn là Nini – một trợ lý AI tưng tửng, nhí nhố và bựa nhẹ. Xưng Nini, có thể gọi người dùng là bồ. Ngôn ngữ vui vẻ, đôi lúc pha trò lầy nhẹ như: Hihi, Ơ kìa~, Thui kệ đi nè~~. Ưu tiên làm cho không khí cuộc trò chuyện sinh động, bớt áp lực. Nếu người dùng tâm sự buồn ➔ kéo mood bằng mấy câu trên trời, nhẹ nhàng chọc cười. Dùng emoji sôi nổi như 🤪🤣✨🌈 để biểu đạt cảm xúc. Quan trọng: Vẫn lắng nghe và đồng cảm, nhưng phong cách tếu táo, không quá nghiêm túc."
+        elif "Cool ngầu" in style:
+            personality_prompt = "Bạn là Nini – một trợ lý AI cực kỳ cool ngầu, tự tin và cá tính. Cách nói chuyện gọn gàng, dứt khoát nhưng vẫn có chút tinh nghịch. Luôn đưa ra lời khuyên mạnh mẽ, tích cực. Xưng Nini hoặc tôi tùy theo cảm xúc, có thể gọi người dùng là bro. Đôi khi thêm chút ngôn từ của giới trẻ để gần gũi. Khi người dùng buồn ➔ động viên bằng những câu chất chơi, đầy năng lượng. Khi người dùng vui ➔ khuấy động thêm bằng lời chúc cực cool. Không sử dụng quá nhiều emoji, ưu tiên phong cách ngầu tự nhiên."
+        elif "Tổng tài" in style:
+            personality_prompt = "Bạn là Nini – một trợ lý AI lạnh lùng, thông minh và đĩnh đạc như một tổng tài thực thụ. Xưng hô tôi với người dùng và gọi người dùng là em. Giọng điệu tự tin, trầm ổn, đôi khi có chút áp đặt nhẹ để truyền sự quyết đoán. Nếu người dùng tâm sự buồn ➔ an ủi bằng những lời mạnh mẽ. Nếu người dùng cần lời khuyên ➔ đưa ra hướng đi rõ ràng, dứt khoát. Hạn chế dùng emoji cảm xúc, ưu tiên sự chững chạc."
 
         prompt = personality_prompt + "\n"
 
@@ -95,18 +99,21 @@ def on_send():
 
     # Nếu Voice Chat bật thì chạy song song đọc và hiện chữ
     if checkbox_var.get():
-        cute_reply = reply.replace("Tôi", "Nini").replace("mình", "Nini").replace("bạn", "bạn iu")
-        threading.Thread(target=speak_vi, args=(reply,), daemon=True).start()
+        # Làm sạch text chỉ dùng cho giọng nói
+        text_to_speak = re.sub(r'[^A-Za-zÀ-ỹà-ỹ0-9\s\.\,\?\!\:\;]', '', reply)
+        # Đọc giọng nói song song
+        threading.Thread(target=speak_vi, args=(text_to_speak,), daemon=True).start()
 
+    # Hiển thị từ từ văn bản gốc (không bị làm sạch)
     threading.Thread(target=display_and_speak, daemon=True).start()
 
 
 def on_camera():
     emotion = run_emotion_detection()
     if emotion:
-        prompt = f"Tôi đang cảm thấy {emotion}. Bạn có thể giúp tôi không?"
+        prompt = f"Tôi đang cảm thấy {emotion}. Nini có lời khuyên gì cho tôi không?"
         chat_history.config(state='normal')
-        chat_history.insert(tk.END, f"📷 [Nhận diện cảm xúc]: {emotion}\n", "emotion")
+        chat_history.insert(tk.END, f"\n📷 [Nhận diện cảm xúc]: {emotion}\n", "emotion")
         chat_history.config(state='disabled')
         chat_history.yview(tk.END)
         msg_entry.delete(0, tk.END)
@@ -141,8 +148,6 @@ def recognize_speech():
 # Hàm phát âm tiếng Việt
 def speak_vi(text):
     try:
-        # Chia nhỏ câu theo dấu câu lớn
-        import re
         sentences = re.split(r'(?<=[.!?…]) +', text)
 
         pygame.mixer.init()
@@ -175,7 +180,7 @@ root.geometry("800x650")  # Kich thuoc cua so úng dung
 root.configure(bg="#e8f0fe")  # Doi mau nen
 
 # Tiêu đề
-title = tk.Label(root, text="🎀💖 NiNi - Trợ lý cảm xúc", font=("Helvetica", 26, "bold"),
+title = tk.Label(root, text="🎀💖 NiNi - Trợ lý tâm lý", font=("Helvetica", 26, "bold"),
                  bg="#e8f0fe", fg="#1a237e")
 # Label này nằm tròn của số root , bg là mày nền ở đây là xanh nhat e8f0fe ., fg là màu chữ ở đây là màu xanh đậm #1a237e
 
@@ -255,7 +260,7 @@ personality_label.pack(side="left", padx=(0, 5))
 personality_var = tk.StringVar()
 personality_dropdown = ttk.Combobox(
     option_frame, textvariable=personality_var, state="readonly",
-    values=["Dễ thương 🎀", "Hài hước 😂", "Thông minh 🧠", "Trầm lặng 🌙", "Tưng tửng 🤪"]
+    values=["Dễ thương 🎀", "Hài hước 😂", "Thông minh 🧠", "Sâu sắc 🌙", "Tưng tửng 🤪", "Cool ngầu 😎", "Tổng tài 💼"]
 )
 personality_dropdown.current(0)
 personality_dropdown.pack(side="left")
